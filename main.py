@@ -22,6 +22,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    p = Path(".token")
+    if p.exists():
+        BOT_TOKEN = p.read_text().strip()
 BOT_PROXY = os.getenv("BOT_PROXY")
 
 session = AiohttpSession(proxy=BOT_PROXY) if BOT_PROXY else None
