@@ -147,8 +147,30 @@ async def main():
     if not BOT_TOKEN:
         print("❌ Ошибка: BOT_TOKEN не задан! Создай файл .env и укажи токен.")
         return
-    print("✅ Бот запущен!")
-    await asyncio.gather(dp.start_polling(bot), run_web())
+    mode = os.getenv("BOT_MODE", "polling")
+    if mode == "webhook":
+        port = int(os.getenv("PORT", 8080))
+        domain = os.getenv("BOT_DOMAIN", "")
+        if domain:
+            await bot.set_webhook(url=f"{domain}/webhook")
+        app = web.Application()
+        app.router.add_get("/", lambda r: web.Response(text="OK"))
+        app.router.add_get("/health", lambda r: web.Response(text="OK"))
+        app.router.add_post("/webhook", handle_webhook)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+        print(f"✅ Webhook mode on port {port}")
+        await asyncio.Event().wait()
+    else:
+        print("✅ Бот запущен (polling)!")
+        await asyncio.gather(dp.start_polling(bot), run_web())
+
+async def handle_webhook(request):
+    update = await request.json()
+    await dp.feed_update(bot, update)
+    return web.Response(text="OK")
 
 
 if __name__ == "__main__":
